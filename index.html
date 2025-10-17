@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>To-Do List App – Phase 5</title>
+  <style>
+    body {
+      font-family: Poppins, sans-serif;
+      background: linear-gradient(to right, #c8e0ff, #e2f0ff);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container {
+      max-width: 600px;
+      margin: auto;
+      background: white;
+      padding: 25px;
+      border-radius: 15px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    h1 { text-align: center; color: #333; }
+    input, select {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      border-radius: 8px;
+      border: 1px solid #aaa;
+    }
+    button {
+      width: 100%;
+      padding: 10px;
+      background: #0066ff;
+      border: none;
+      color: white;
+      border-radius: 8px;
+      margin-top: 10px;
+      cursor: pointer;
+    }
+    button:hover { background: #0044cc; }
+    ul { list-style: none; padding: 0; }
+    li {
+      background: #f4f8ff;
+      margin: 8px 0;
+      padding: 10px;
+      border-radius: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .completed { text-decoration: line-through; opacity: 0.6; }
+    .logout-btn { background: crimson; }
+  </style>
+</head>
+<body>
+  <div class="container" id="loginContainer">
+    <h1>Login</h1>
+    <input type="text" id="username" placeholder="Enter your name">
+    <button onclick="login()">Login</button>
+  </div>
+
+  <div class="container" id="appContainer" style="display:none;">
+    <h1>To-Do List App</h1>
+    <p id="welcome"></p>
+
+    <input type="text" id="taskInput" placeholder="Enter new task">
+    <select id="category">
+      <option value="Work">Work</option>
+      <option value="Personal">Personal</option>
+      <option value="Study">Study</option>
+      <option value="Shopping">Shopping</option>
+    </select>
+    <select id="priority">
+      <option value="High">High</option>
+      <option value="Medium">Medium</option>
+      <option value="Low">Low</option>
+    </select>
+    <input type="date" id="deadline">
+    <button onclick="addTask()">Add Task</button>
+
+    <ul id="taskList"></ul>
+    <button class="logout-btn" onclick="logout()">Logout</button>
+  </div>
+
+  <script>
+    // Simulated MongoDB data (Phase 5 concept)
+    let db = JSON.parse(localStorage.getItem("todoDB")) || {};
+
+    function login() {
+      const username = document.getElementById("username").value.trim();
+      if (username === "") return alert("Please enter your name!");
+
+      if (!db[username]) db[username] = []; // Create new user if not exists
+      localStorage.setItem("currentUser", username);
+      localStorage.setItem("todoDB", JSON.stringify(db));
+      showApp();
+    }
+
+    function showApp() {
+      document.getElementById("loginContainer").style.display = "none";
+      document.getElementById("appContainer").style.display = "block";
+      const user = localStorage.getItem("currentUser");
+      document.getElementById("welcome").innerText = `Welcome, ${user}!`;
+      renderTasks();
+    }
+
+    function logout() {
+      localStorage.removeItem("currentUser");
+      location.reload();
+    }
+
+    function addTask() {
+      const task = document.getElementById("taskInput").value.trim();
+      const category = document.getElementById("category").value;
+      const priority = document.getElementById("priority").value;
+      const deadline = document.getElementById("deadline").value;
+      const user = localStorage.getItem("currentUser");
+
+      if (task === "") return alert("Task cannot be empty!");
+
+      const newTask = {
+        id: Date.now(),
+        name: task,
+        category,
+        priority,
+        deadline,
+        completed: false
+      };
+
+      db[user].push(newTask);
+      localStorage.setItem("todoDB", JSON.stringify(db));
+      document.getElementById("taskInput").value = "";
+      renderTasks();
+      checkReminders();
+    }
+
+    function toggleTask(id) {
+      const user = localStorage.getItem("currentUser");
+      db[user] = db[user].map(t => t.id === id ? {...t, completed: !t.completed} : t);
+      localStorage.setItem("todoDB", JSON.stringify(db));
+      renderTasks();
+    }
+
+    function deleteTask(id) {
+      const user = localStorage.getItem("currentUser");
+      db[user] = db[user].filter(t => t.id !== id);
+      localStorage.setItem("todoDB", JSON.stringify(db));
+      renderTasks();
+    }
+
+    function renderTasks() {
+      const user = localStorage.getItem("currentUser");
+      const taskList = document.getElementById("taskList");
+      taskList.innerHTML = "";
+      if (!user) return;
+      db[user].forEach(task => {
+        const li = document.createElement("li");
+        li.className = task.completed ? "completed" : "";
+        li.innerHTML = `
+          <div>
+            <strong>${task.name}</strong>
+            <small>[${task.category}] | Priority: ${task.priority} | Due: ${task.deadline || 'None'}</small>
+          </div>
+          <div>
+            <input type="checkbox" ${task.completed ? "checked" : ""} onclick="toggleTask(${task.id})">
+            <button onclick="deleteTask(${task.id})">❌</button>
+          </div>`;
+        taskList.appendChild(li);
+      });
+    }
+
+    function checkReminders() {
+      const user = localStorage.getItem("currentUser");
+      const today = new Date().toISOString().split("T")[0];
+      db[user].forEach(task => {
+        if (task.deadline === today && !task.completed) {
+          alert(`Reminder: "${task.name}" is due today!`);
+        }
+      });
+    }
+
+    // Auto show app if already logged in
+    if (localStorage.getItem("currentUser")) showApp();
+  </script>
+</body>
+</html>
+
